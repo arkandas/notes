@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 444" width="960" height="444" role="img" aria-labelledby="title desc">
+  <title id="title">Notes architecture</title>
+  <desc id="desc">The React client in the browser calls the Next.js server's API routes. src/proxy.ts checks the session first. The API routes store notes, folders, users and image records in PostgreSQL through Prisma, and image files in an uploads directory. NextAuth handles sign-in.</desc>
+  <defs>
+    <marker id="head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#a4472a"/>
+    </marker>
+    <style>
+      .sans { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+      .col { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; fill: #8f8878; }
+      .title { font-size: 15px; font-weight: 600; fill: #24211b; }
+      .body { font-size: 12.5px; fill: #66604f; }
+      .path { font-size: 12px; fill: #a4472a; }
+      .label { font-size: 11px; fill: #8f8878; }
+      .box { fill: #fffefb; stroke: #dcd5c6; stroke-width: 1; }
+      .arrow { stroke: #a4472a; stroke-width: 1.5; fill: none; }
+    </style>
+  </defs>
+
+  <rect width="960" height="444" rx="16" fill="#f2efe7"/>
+
+  <text class="sans col" x="24" y="36">BROWSER</text>
+  <text class="sans col" x="354" y="36">NEXT.JS SERVER</text>
+  <text class="sans col" x="724" y="36">STORAGE</text>
+
+  <rect class="box" x="24" y="52" width="250" height="368" rx="10"/>
+  <text class="sans title" x="42" y="80">React client</text>
+  <text class="sans body" x="42" y="106">Editor and live preview</text>
+  <text class="sans body" x="42" y="130">react-markdown, KaTeX, Prism</text>
+  <text class="sans body" x="42" y="154">Tabs, folders, search, trash</text>
+  <text class="sans body" x="42" y="178">Drag and drop (dnd-kit)</text>
+  <text class="sans body" x="42" y="202">Markdown and PDF export</text>
+  <text class="sans body" x="42" y="226">Image paste and drop</text>
+  <text class="sans title" x="42" y="292">Pages</text>
+  <text class="mono path" x="42" y="318">/</text>
+  <text class="sans body" x="112" y="318">editor</text>
+  <text class="mono path" x="42" y="340">/login</text>
+  <text class="sans body" x="112" y="340">sign in</text>
+  <text class="mono path" x="42" y="362">/setup</text>
+  <text class="sans body" x="112" y="362">first account</text>
+
+  <rect class="box" x="354" y="52" width="290" height="84" rx="10"/>
+  <text class="mono title" x="372" y="80">src/proxy.ts</text>
+  <text class="sans body" x="372" y="104">Checks the session cookie</text>
+  <text class="sans body" x="372" y="122">No session: redirect to /login</text>
+
+  <rect class="box" x="354" y="156" width="290" height="160" rx="10"/>
+  <text class="sans title" x="372" y="184">API routes</text>
+  <text class="mono path" x="372" y="210">/api/notes</text>
+  <text class="sans body" x="516" y="210">notes, trash, order</text>
+  <text class="mono path" x="372" y="231">/api/note-folders</text>
+  <text class="sans body" x="516" y="231">folders</text>
+  <text class="mono path" x="372" y="252">/api/images</text>
+  <text class="sans body" x="516" y="252">upload, serve</text>
+  <text class="mono path" x="372" y="273">/api/users</text>
+  <text class="sans body" x="516" y="273">accounts, avatars</text>
+  <text class="mono path" x="372" y="294">/api/export/docx</text>
+  <text class="sans body" x="516" y="294">Word export</text>
+
+  <rect class="box" x="354" y="336" width="290" height="84" rx="10"/>
+  <text class="sans title" x="372" y="364">NextAuth</text>
+  <text class="mono path" x="450" y="364">/api/auth</text>
+  <text class="sans body" x="372" y="388">Username and password, bcrypt</text>
+  <text class="sans body" x="372" y="406">JWT session cookie</text>
+
+  <rect class="box" x="724" y="52" width="212" height="176" rx="10"/>
+  <text class="sans title" x="742" y="80">PostgreSQL</text>
+  <text class="mono path" x="742" y="112">users</text>
+  <text class="mono path" x="742" y="136">notes</text>
+  <text class="mono path" x="742" y="160">note_folders</text>
+  <text class="mono path" x="742" y="184">images</text>
+
+  <rect class="box" x="724" y="256" width="212" height="164" rx="10"/>
+  <text class="sans title" x="742" y="284">Uploads directory</text>
+  <text class="sans body" x="742" y="308">Images named by SHA-256</text>
+  <text class="mono path" x="742" y="340">NOTES_UPLOADS_DIR</text>
+  <text class="sans body" x="742" y="362">/app/uploads in Docker</text>
+
+  <line class="arrow" x1="276" y1="94" x2="352" y2="94" marker-start="url(#head)" marker-end="url(#head)"/>
+  <text class="sans label" x="314" y="86" text-anchor="middle">fetch</text>
+  <text class="mono label" x="314" y="110" text-anchor="middle">/api/*</text>
+
+  <line class="arrow" x1="499" y1="137" x2="499" y2="154" marker-end="url(#head)"/>
+
+  <line class="arrow" x1="646" y1="190" x2="722" y2="190" marker-start="url(#head)" marker-end="url(#head)"/>
+  <text class="sans label" x="684" y="182" text-anchor="middle">Prisma</text>
+  <line class="arrow" x1="646" y1="286" x2="722" y2="286" marker-start="url(#head)" marker-end="url(#head)"/>
+  <text class="sans label" x="684" y="278" text-anchor="middle">files</text>
+</svg>
