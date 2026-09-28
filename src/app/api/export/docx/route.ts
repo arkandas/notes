@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
+import { apiError } from '@/lib/api-errors';
 import { authOptions } from '@/lib/auth';
 import { noteToDocxBuffer } from '@/lib/docx';
 import { slugify } from '@/lib/export';
@@ -7,7 +8,7 @@ import { slugify } from '@/lib/export';
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return apiError('unauthorized', 401);
   }
 
   try {
@@ -22,6 +23,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Failed to build docx:', error);
-    return NextResponse.json({ error: 'Failed to build document' }, { status: 500 });
+    return apiError('generic', 500);
   }
 }

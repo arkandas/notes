@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { apiError } from '@/lib/api-errors';
 import { prisma } from '@/lib/prisma';
 
 export async function GET() {
@@ -7,9 +8,6 @@ export async function GET() {
     return NextResponse.json({ hasUsers: userCount > 0 });
   } catch (error) {
     console.error('Error checking users:', error);
-    return NextResponse.json(
-      { error: 'Failed to check users' },
-      { status: 500 }
-    );
+    return apiError('generic', 500);
   }
 }

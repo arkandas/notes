@@ -2,19 +2,22 @@
 
 import React from 'react';
 import { Monitor, Moon, Sun } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { THEME_ORDER, type Theme } from '@/lib/theme';
 import { useTheme } from '@/lib/use-theme';
 
-const THEME_OPTIONS: Array<{ value: Theme; label: string; icon: typeof Sun }> = [
-  { value: 'system', label: 'System', icon: Monitor },
-  { value: 'light', label: 'Light', icon: Sun },
-  { value: 'dark', label: 'Dark', icon: Moon },
+const THEME_OPTIONS: Array<{ value: Theme; icon: typeof Sun }> = [
+  { value: 'system', icon: Monitor },
+  { value: 'light', icon: Sun },
+  { value: 'dark', icon: Moon },
 ];
 
 export function ThemeToggle() {
+  const t = useTranslations('theme');
   const { theme, setTheme } = useTheme();
   const current = THEME_OPTIONS.find(option => option.value === theme) ?? THEME_OPTIONS[0];
   const Icon = current.icon;
+  const label = t(current.value);
 
   const cycle = () => {
     const index = THEME_ORDER.indexOf(current.value);
@@ -25,8 +28,8 @@ export function ThemeToggle() {
     <button
       type="button"
       onClick={cycle}
-      title={`Theme: ${current.label}`}
-      aria-label={`Theme: ${current.label}. Click to change.`}
+      title={t('current', { theme: label })}
+      aria-label={t('toggle', { theme: label })}
       className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-canvas hover:text-ink active:bg-muted"
     >
       <Icon size={18} />
@@ -35,11 +38,12 @@ export function ThemeToggle() {
 }
 
 export function ThemePicker() {
+  const t = useTranslations('theme');
   const { theme, setTheme } = useTheme();
 
   return (
-    <div role="group" aria-label="Theme" className="grid grid-cols-3 gap-0.5 rounded-lg border border-line bg-muted p-0.5 dark:bg-canvas">
-      {THEME_OPTIONS.map(({ value, label, icon: Icon }) => {
+    <div role="group" aria-label={t('label')} className="grid grid-cols-3 gap-0.5 rounded-lg border border-line bg-muted p-0.5 dark:bg-canvas">
+      {THEME_OPTIONS.map(({ value, icon: Icon }) => {
         const active = theme === value;
         return (
           <button
@@ -54,7 +58,7 @@ export function ThemePicker() {
             }`}
           >
             <Icon size={15} />
-            {label}
+            {t(value)}
           </button>
         );
       })}

@@ -16,6 +16,7 @@ import {
   Trash2, X,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { useLocale, useTranslations, type Messages } from 'next-intl';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { gruvboxDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -29,12 +30,14 @@ import { Button } from '@/components/ui/button';
 import { noteApi, noteFolderApi, noteTrashApi } from '@/lib/api';
 import { exportDocx, exportMarkdown } from '@/lib/export';
 import { imageMarkdown, uploadNoteImage } from '@/lib/image';
+import { useApiError } from '@/lib/use-api-error';
 import { Note, NoteFolder } from '@/types';
 
 const MARKDOWN_PLUGINS = [remarkGfm, remarkMath];
 const REHYPE_PLUGINS = [[rehypeKatex, { strict: false, throwOnError: false }]] as never;
 
 function CodeBlock({ className, children, node }: { className?: string; children?: React.ReactNode; node?: unknown }) {
+  const t = useTranslations('notes');
   const [copied, setCopied] = useState(false);
   const match = /language-(\w+)/.exec(className || '');
   const position = (node as { position?: { start: { line: number }; end: { line: number } } })?.position;
@@ -56,10 +59,10 @@ function CodeBlock({ className, children, node }: { className?: string; children
           type="button"
           onClick={copy}
           className="absolute right-2 top-2 z-10 flex h-8 items-center gap-1.5 rounded-md bg-white/10 px-2.5 text-xs font-medium text-white/90 opacity-0 transition-opacity hover:bg-white/20 focus:opacity-100 group-hover/code:opacity-100 sm:opacity-0"
-          title="Copy code"
+          title={t('copyCode')}
         >
           {copied ? <Check size={13} /> : <Copy size={13} />}
-          {copied ? 'Copied' : 'Copy'}
+          {copied ? t('copied') : t('copy')}
         </button>
         <SyntaxHighlighter
           style={gruvboxDark}
@@ -83,19 +86,21 @@ function CodeBlock({ className, children, node }: { className?: string; children
 
 const OPEN_TABS_KEY = 'notes-open-tabs';
 
-const FOLDER_ICONS: { key: string; Icon: LucideIcon; label: string }[] = [
-  { key: 'folder', Icon: Folder, label: 'Folder' },
-  { key: 'note', Icon: FileText, label: 'Note' },
-  { key: 'star', Icon: Star, label: 'Star' },
-  { key: 'pin', Icon: Pin, label: 'Pin' },
-  { key: 'bookmark', Icon: Bookmark, label: 'Bookmark' },
-  { key: 'idea', Icon: Lightbulb, label: 'Idea' },
-  { key: 'lab', Icon: FlaskConical, label: 'Lab' },
-  { key: 'book', Icon: BookOpen, label: 'Book' },
-  { key: 'target', Icon: Target, label: 'Target' },
-  { key: 'work', Icon: Briefcase, label: 'Work' },
-  { key: 'heart', Icon: Heart, label: 'Heart' },
-  { key: 'code', Icon: Code2, label: 'Code' },
+type FolderIcon = keyof Messages['notes']['folderIcons'];
+
+const FOLDER_ICONS: { key: FolderIcon; Icon: LucideIcon }[] = [
+  { key: 'folder', Icon: Folder },
+  { key: 'note', Icon: FileText },
+  { key: 'star', Icon: Star },
+  { key: 'pin', Icon: Pin },
+  { key: 'bookmark', Icon: Bookmark },
+  { key: 'idea', Icon: Lightbulb },
+  { key: 'lab', Icon: FlaskConical },
+  { key: 'book', Icon: BookOpen },
+  { key: 'target', Icon: Target },
+  { key: 'work', Icon: Briefcase },
+  { key: 'heart', Icon: Heart },
+  { key: 'code', Icon: Code2 },
 ];
 
 const FOLDER_ICON_MAP: Record<string, LucideIcon> =
@@ -119,7 +124,9 @@ function FolderGlyph({
   return React.createElement(folderIcon(icon), { size, className, style });
 }
 
-const FOLDER_COLORS: Record<string, string> = {
+type FolderColor = keyof Messages['notes']['folderColors'];
+
+const FOLDER_COLORS: Record<FolderColor, string> = {
   red: 'var(--folder-red)',
   orange: 'var(--folder-orange)',
   amber: 'var(--folder-amber)',
@@ -135,16 +142,15 @@ const FOLDER_COLORS: Record<string, string> = {
   pink: 'var(--folder-pink)',
 };
 
-const LEGACY_FOLDER_COLORS: Record<string, string> = {
+const LEGACY_FOLDER_COLORS: Record<string, FolderColor> = {
   clay: 'red', sage: 'green', rose: 'pink', stone: 'indigo',
   emerald: 'green', sky: 'cyan', purple: 'violet', slate: 'indigo',
 };
 
-function folderColorKey(key?: string | null) {
+function folderColorKey(key?: string | null): FolderColor | null {
   if (!key) return null;
-  if (key in FOLDER_COLORS) return key;
-  const legacy = LEGACY_FOLDER_COLORS[key];
-  return legacy && legacy in FOLDER_COLORS ? legacy : null;
+  if (key in FOLDER_COLORS) return key as FolderColor;
+  return LEGACY_FOLDER_COLORS[key] ?? null;
 }
 
 function SortableNote({
@@ -162,6 +168,7 @@ function SortableNote({
   query?: string;
   inkColor?: string | null;
 }) {
+  const t = useTranslations('notes');
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: note.id });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -192,7 +199,7 @@ function SortableNote({
           className="truncate text-sm font-medium"
           style={!isSelected && inkColor ? { color: inkColor } : undefined}
         >
-          {note.title || 'Untitled'}
+          {note.title || t('untitled')}
         </div>
         {snippet ? (
           <div className={`mt-0.5 truncate text-xs ${isSelected ? 'text-accent-ink' : 'text-ink-muted'}`}>
@@ -221,6 +228,7 @@ function UnfiledNotes({
   formatDate: (d: string) => string;
   dragging: boolean;
 }) {
+  const t = useTranslations('notes');
   const { setNodeRef, isOver } = useDroppable({ id: '' });
 
   return (
@@ -244,7 +252,7 @@ function UnfiledNotes({
 
       {notes.length === 0 && dragging && (
         <p className="rounded-md border border-dashed border-line-strong px-2 py-3 text-center text-xs text-ink-muted">
-          Drop here to remove from its folder
+          {t('dropToUnfile')}
         </p>
       )}
     </div>
@@ -282,6 +290,9 @@ function DroppableFolderSection({
   onFolderMenu?: (changes: { color?: string | null; icon?: string | null }) => void;
   onRename?: (name: string) => void;
 }) {
+  const t = useTranslations('notes');
+  const tColors = useTranslations('notes.folderColors');
+  const tIcons = useTranslations('notes.folderIcons');
   const { setNodeRef, isOver } = useDroppable({ id: droppableId });
   const [menuOpen, setMenuOpen] = useState(false);
   const [renaming, setRenaming] = useState(false);
@@ -364,8 +375,8 @@ function DroppableFolderSection({
             <button
               onClick={() => setMenuOpen(v => !v)}
               className="folder-chip-action flex h-7 w-7 items-center justify-center rounded-md text-ink-muted transition-colors hover:text-ink"
-              title={`Options for ${displayName}`}
-              aria-label={`Options for ${displayName}`}
+              title={t('folderOptions', { name: displayName })}
+              aria-label={t('folderOptions', { name: displayName })}
             >
               <MoreHorizontal size={16} />
             </button>
@@ -374,38 +385,38 @@ function DroppableFolderSection({
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
                 <div className="absolute left-2 right-2 top-full z-20 mt-1 rounded-xl border border-line bg-surface p-3 shadow-xl">
-                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">Color</p>
+                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">{t('color')}</p>
                   <div className="mb-3 grid grid-cols-7 justify-items-center gap-1.5">
-                    {Object.entries(FOLDER_COLORS).map(([name, value]) => (
+                    {(Object.entries(FOLDER_COLORS) as [FolderColor, string][]).map(([name, value]) => (
                       <button
                         key={name}
                         onClick={() => onFolderMenu({ color: name })}
-                        title={name}
-                        aria-label={name}
+                        title={tColors(name)}
+                        aria-label={tColors(name)}
                         className="h-6 w-6 rounded-full transition-transform hover:scale-110"
                         style={{ backgroundColor: value, boxShadow: colorKey === name ? `0 0 0 2px var(--surface), 0 0 0 4px ${value}` : undefined }}
                       />
                     ))}
                     <button
                       onClick={() => onFolderMenu({ color: null })}
-                      title="No color"
-                      aria-label="No color"
+                      title={t('noColor')}
+                      aria-label={t('noColor')}
                       className="flex h-6 w-6 items-center justify-center rounded-full border border-line-strong text-ink-muted transition-colors hover:bg-muted"
                     >
                       <X size={11} />
                     </button>
                   </div>
 
-                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">Icon</p>
+                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">{t('icon')}</p>
                   <div className="mb-3 grid grid-cols-6 gap-1">
-                    {FOLDER_ICONS.map(({ key, Icon, label }) => {
+                    {FOLDER_ICONS.map(({ key, Icon }) => {
                       const active = key === 'folder' ? !icon || icon === 'folder' : icon === key;
                       return (
                         <button
                           key={key}
                           onClick={() => onFolderMenu({ icon: key === 'folder' ? null : key })}
-                          title={label}
-                          aria-label={label}
+                          title={tIcons(key)}
+                          aria-label={tIcons(key)}
                           className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors hover:bg-muted ${
                             active ? 'bg-muted text-accent ring-1 ring-accent' : 'text-ink-muted hover:text-ink'
                           }`}
@@ -422,7 +433,7 @@ function DroppableFolderSection({
                       className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-ink-muted transition-colors hover:bg-muted hover:text-ink"
                     >
                       <Plus size={15} />
-                      New note here
+                      {t('newNoteHere')}
                     </button>
                     {onRename && (
                       <button
@@ -430,7 +441,7 @@ function DroppableFolderSection({
                         className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-ink-muted transition-colors hover:bg-muted hover:text-ink"
                       >
                         <Pencil size={15} />
-                        Rename
+                        {t('rename')}
                       </button>
                     )}
                     {onDeleteFolder && (
@@ -439,7 +450,7 @@ function DroppableFolderSection({
                         className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-danger transition-colors hover:bg-danger-soft"
                       >
                         <Trash2 size={15} />
-                        Delete folder
+                        {t('deleteFolder')}
                       </button>
                     )}
                   </div>
@@ -469,7 +480,7 @@ function DroppableFolderSection({
             ))}
           </SortableContext>
           {folderNotes.length === 0 && (
-            <p className="py-1 pl-3 text-xs italic text-ink-muted">Empty</p>
+            <p className="py-1 pl-3 text-xs italic text-ink-muted">{t('emptyFolder')}</p>
           )}
         </div>
       )}
@@ -482,19 +493,25 @@ type Wrap =
   | { kind: 'prefix'; marker: string }
   | { kind: 'heading' };
 
-const TOOLBAR: { icon: typeof Bold; title: string; shortcut?: string; wrap: Wrap }[] = [
-  { icon: Bold, title: 'Bold', shortcut: '⌘B', wrap: { kind: 'inline', before: '**', after: '**' } },
-  { icon: Italic, title: 'Italic', shortcut: '⌘I', wrap: { kind: 'inline', before: '_', after: '_' } },
-  { icon: Code2, title: 'Code', wrap: { kind: 'inline', before: '`', after: '`' } },
-  { icon: Link2, title: 'Link', shortcut: '⌘K', wrap: { kind: 'inline', before: '[', after: '](url)' } },
-  { icon: Heading2, title: 'Heading', wrap: { kind: 'heading' } },
-  { icon: List, title: 'List', wrap: { kind: 'prefix', marker: '- ' } },
-  { icon: Quote, title: 'Quote', wrap: { kind: 'prefix', marker: '> ' } },
+type ToolbarAction = keyof Messages['notes']['toolbar'];
+
+const TOOLBAR: { icon: typeof Bold; action: ToolbarAction; shortcut?: string; wrap: Wrap }[] = [
+  { icon: Bold, action: 'bold', shortcut: '⌘B', wrap: { kind: 'inline', before: '**', after: '**' } },
+  { icon: Italic, action: 'italic', shortcut: '⌘I', wrap: { kind: 'inline', before: '_', after: '_' } },
+  { icon: Code2, action: 'code', wrap: { kind: 'inline', before: '`', after: '`' } },
+  { icon: Link2, action: 'link', shortcut: '⌘K', wrap: { kind: 'inline', before: '[', after: '](url)' } },
+  { icon: Heading2, action: 'heading', wrap: { kind: 'heading' } },
+  { icon: List, action: 'list', wrap: { kind: 'prefix', marker: '- ' } },
+  { icon: Quote, action: 'quote', wrap: { kind: 'prefix', marker: '> ' } },
 ];
 
 const escapeRe = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 export function Notes({ headerActions }: { headerActions?: React.ReactNode }) {
+  const t = useTranslations('notes');
+  const tCommon = useTranslations('common');
+  const locale = useLocale();
+  const apiError = useApiError();
   const [notes, setNotes] = useState<Note[]>([]);
   const [folders, setFolders] = useState<NoteFolder[]>([]);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
@@ -854,13 +871,13 @@ export function Notes({ headerActions }: { headerActions?: React.ReactNode }) {
           replaceRange(at, ta ? ta.selectionEnd : at, text, at + text.length, at + text.length);
         } catch (error) {
           console.error('Image upload failed:', error);
-          setFolderError(error instanceof Error ? error.message : 'Could not upload the image');
+          setFolderError(apiError(error, 'imageUploadFailed'));
         } finally {
           setUploading(n => n - 1);
         }
       }
     },
-    [content.length, replaceRange],
+    [content.length, replaceRange, apiError],
   );
 
   const handlePaste = useCallback(
@@ -1005,7 +1022,7 @@ export function Notes({ headerActions }: { headerActions?: React.ReactNode }) {
   const handleCreateNote = async (inFolder = '') => {
     flushSave();
     try {
-      const newNote = await noteApi.create({ title: 'Untitled', content: '', folder: inFolder });
+      const newNote = await noteApi.create({ title: t('untitled'), content: '', folder: inFolder });
       setNotes(prev => [...prev, newNote]);
       openInTab(newNote.id);
       setSelectedNote(newNote);
@@ -1049,7 +1066,7 @@ export function Notes({ headerActions }: { headerActions?: React.ReactNode }) {
 
   const handleRenameFolder = async (folderId: number, oldName: string, newName: string) => {
     if (folders.some(f => f.id !== folderId && f.name === newName)) {
-      setFolderError(`A folder called “${newName}” already exists`);
+      setFolderError(t('folderExists', { name: newName }));
       return;
     }
     setFolders(prev => prev.map(f => (f.id === folderId ? { ...f, name: newName } : f)));
@@ -1070,7 +1087,7 @@ export function Notes({ headerActions }: { headerActions?: React.ReactNode }) {
       await noteFolderApi.update(folderId, { name: newName });
     } catch (error) {
       console.error('Failed to rename folder:', error);
-      setFolderError(error instanceof Error ? error.message : 'Failed to rename folder');
+      setFolderError(apiError(error, 'folderUpdateFailed'));
       loadAll();
     }
   };
@@ -1220,7 +1237,7 @@ export function Notes({ headerActions }: { headerActions?: React.ReactNode }) {
   };
 
   const formatDate = (dateString: string) =>
-    new Date(dateString).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    new Date(dateString).toLocaleDateString(locale, { month: 'short', day: 'numeric' });
 
   const notesByFolder: Record<string, Note[]> = { '': [] };
   for (const f of folders) notesByFolder[f.name] = [];
@@ -1259,23 +1276,23 @@ export function Notes({ headerActions }: { headerActions?: React.ReactNode }) {
           <button
             onClick={() => { setNewFolderMode(true); setNewFolderName(''); }}
             className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-muted hover:text-ink"
-            title="New folder"
-            aria-label="New folder"
+            title={t('newFolder')}
+            aria-label={t('newFolder')}
           >
             <FolderPlus size={16} />
           </button>
           <button
             onClick={() => handleCreateNote()}
             className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-muted hover:text-ink"
-            title="New note"
-            aria-label="New note"
+            title={t('newNote')}
+            aria-label={t('newNote')}
           >
             <Plus size={18} />
           </button>
           <button
             onClick={() => setDrawerOpen(false)}
             className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-muted md:hidden"
-            aria-label="Close note list"
+            aria-label={t('closeList')}
           >
             <X size={18} />
           </button>
@@ -1289,7 +1306,7 @@ export function Notes({ headerActions }: { headerActions?: React.ReactNode }) {
             className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium text-ink-muted transition-colors hover:bg-muted hover:text-ink"
           >
             <ArrowLeft size={15} />
-            Back to notes
+            {t('backToNotes')}
           </button>
           {trash.length > 0 && (
             confirmEmptyTrash ? (
@@ -1298,13 +1315,13 @@ export function Notes({ headerActions }: { headerActions?: React.ReactNode }) {
                   onClick={handleEmptyTrash}
                   className="rounded-md bg-danger px-2 py-1 text-[11px] font-semibold text-accent-ink"
                 >
-                  Delete {trash.length}
+                  {t('deleteCount', { count: trash.length })}
                 </button>
                 <button
                   onClick={() => setConfirmEmptyTrash(false)}
                   className="text-[11px] font-medium text-ink-muted hover:text-ink"
                 >
-                  Cancel
+                  {tCommon('cancel')}
                 </button>
               </span>
             ) : (
@@ -1312,7 +1329,7 @@ export function Notes({ headerActions }: { headerActions?: React.ReactNode }) {
                 onClick={() => setConfirmEmptyTrash(true)}
                 className="rounded-md px-2 py-1 text-[11px] font-semibold text-danger transition-colors hover:bg-danger-soft"
               >
-                Empty trash
+                {t('emptyTrash')}
               </button>
             )
           )}
@@ -1324,14 +1341,14 @@ export function Notes({ headerActions }: { headerActions?: React.ReactNode }) {
           <input
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="Search notes…"
+            placeholder={t('search')}
             className="h-10 w-full rounded-lg border border-line bg-surface pl-9 pr-8 text-base text-ink outline-hidden transition-colors placeholder:text-ink-faint focus:border-accent focus:ring-2 focus:ring-accent/25 md:h-9 md:text-sm"
           />
           {query && (
             <button
               onClick={() => setQuery('')}
               className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-sm text-ink-faint hover:text-ink-muted"
-              aria-label="Clear search"
+              aria-label={t('clearSearch')}
             >
               <X size={14} />
             </button>
@@ -1344,7 +1361,7 @@ export function Notes({ headerActions }: { headerActions?: React.ReactNode }) {
         <div className="mx-2 mb-1 flex items-start gap-1.5 rounded-md border border-danger bg-danger-soft px-2 py-1.5 text-[11px] font-medium text-danger">
           <AlertTriangle size={13} className="mt-px shrink-0" />
           <span className="min-w-0 flex-1">{folderError}</span>
-          <button onClick={() => setFolderError(null)} aria-label="Dismiss"><X size={12} /></button>
+          <button onClick={() => setFolderError(null)} aria-label={t('dismiss')}><X size={12} /></button>
         </div>
       )}
 
@@ -1352,13 +1369,13 @@ export function Notes({ headerActions }: { headerActions?: React.ReactNode }) {
         {showTrash ? (
           <div className="flex flex-col gap-1 px-2 pt-1">
             {trash.length === 0 && (
-              <p className="px-1 py-6 text-center text-xs text-ink-muted">The trash is empty</p>
+              <p className="px-1 py-6 text-center text-xs text-ink-muted">{t('trashEmpty')}</p>
             )}
             {trash.map(note => (
               <div key={note.id} className="rounded-lg border border-line bg-surface px-3 py-2">
-                <div className="truncate text-sm font-medium text-ink">{note.title || 'Untitled'}</div>
+                <div className="truncate text-sm font-medium text-ink">{note.title || t('untitled')}</div>
                 <div className="mt-0.5 text-xs text-ink-muted">
-                  Deleted {note.deleted_at ? formatDate(note.deleted_at) : ''}
+                  {t('deletedOn', { date: note.deleted_at ? formatDate(note.deleted_at) : '' })}
                 </div>
                 <div className="mt-2 flex items-center gap-1">
                   <button
@@ -1366,14 +1383,14 @@ export function Notes({ headerActions }: { headerActions?: React.ReactNode }) {
                     className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold text-ink-muted transition-colors hover:bg-muted hover:text-ink"
                   >
                     <RotateCcw size={12} />
-                    Restore
+                    {t('restore')}
                   </button>
                   <button
                     onClick={() => handleDeleteForever(note.id)}
                     className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold text-danger transition-colors hover:bg-danger-soft"
                   >
                     <Trash2 size={12} />
-                    Delete forever
+                    {t('deleteForever')}
                   </button>
                 </div>
               </div>
@@ -1393,7 +1410,7 @@ export function Notes({ headerActions }: { headerActions?: React.ReactNode }) {
                 if (e.key === 'Escape') { setNewFolderMode(false); setNewFolderName(''); }
               }}
               onBlur={handleCreateFolder}
-              placeholder="Folder name…"
+              placeholder={t('folderName')}
               className="h-9 w-full min-w-0 flex-1 rounded-md border border-accent bg-raised px-2 text-base font-semibold text-ink outline-hidden md:text-[15px]"
             />
           </div>
@@ -1402,7 +1419,7 @@ export function Notes({ headerActions }: { headerActions?: React.ReactNode }) {
         {searchResults ? (
           <div className="flex flex-col gap-0.5 px-2">
             <p className="px-1 pb-1 pt-2 text-xs font-medium text-ink-muted">
-              {searchResults.length} {searchResults.length === 1 ? 'match' : 'matches'} for “{trimmedQuery}”
+              {t('matches', { count: searchResults.length, query: trimmedQuery })}
             </p>
             {searchResults.map(note => (
               <SortableNote
@@ -1415,13 +1432,13 @@ export function Notes({ headerActions }: { headerActions?: React.ReactNode }) {
               />
             ))}
             {searchResults.length === 0 && (
-              <p className="px-1 py-4 text-center text-xs text-ink-faint">Nothing found</p>
+              <p className="px-1 py-4 text-center text-xs text-ink-faint">{t('nothingFound')}</p>
             )}
           </div>
         ) : (
           <>
             {notes.length === 0 && folders.length === 0 && !loading && (
-              <p className="mt-4 text-center text-xs text-ink-faint">No notes yet</p>
+              <p className="mt-4 text-center text-xs text-ink-faint">{t('noNotes')}</p>
             )}
 
             <DndContext
@@ -1462,7 +1479,7 @@ export function Notes({ headerActions }: { headerActions?: React.ReactNode }) {
                 {activeDragNote && (
                   <div className="w-44 rounded-lg border border-accent bg-surface px-3 py-2 opacity-90 shadow-lg">
                     <div className="truncate text-sm font-semibold text-ink">
-                      {activeDragNote.title || 'Untitled'}
+                      {activeDragNote.title || t('untitled')}
                     </div>
                   </div>
                 )}
@@ -1480,7 +1497,7 @@ export function Notes({ headerActions }: { headerActions?: React.ReactNode }) {
           className="flex h-9 shrink-0 items-center gap-2 border-t border-line px-4 text-sm font-medium text-ink-muted transition-colors hover:bg-muted hover:text-ink"
         >
           <Trash2 size={15} />
-          Trash
+          {t('trash')}
         </button>
       )}
     </>
@@ -1499,7 +1516,7 @@ export function Notes({ headerActions }: { headerActions?: React.ReactNode }) {
         />
         <div
           role="dialog"
-          aria-label="Notes"
+          aria-label={t('list')}
           className={`absolute inset-y-0 left-0 flex w-[84%] max-w-[320px] flex-col bg-surface shadow-2xl transition-[transform,visibility] duration-300 ease-out ${
             drawerOpen ? 'visible translate-x-0' : 'invisible -translate-x-full'
           }`}
@@ -1513,7 +1530,7 @@ export function Notes({ headerActions }: { headerActions?: React.ReactNode }) {
           <button
             onClick={() => setDrawerOpen(true)}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-canvas md:hidden"
-            aria-label="Show notes"
+            aria-label={t('showList')}
           >
             <Menu size={20} />
           </button>
@@ -1524,21 +1541,21 @@ export function Notes({ headerActions }: { headerActions?: React.ReactNode }) {
                 value={title}
                 onChange={handleTitleChange}
                 className="min-w-0 flex-1 border-none bg-transparent text-base font-bold text-ink outline-hidden placeholder:text-ink-faint sm:text-lg"
-                placeholder="Note title…"
+                placeholder={t('titlePlaceholder')}
               />
 
               <div className="flex shrink-0 items-center gap-1 sm:gap-2">
                 <div className="flex items-center gap-0.5 rounded-lg bg-canvas p-0.5">
                   {([
-                    { mode: 'editor', icon: Code, label: 'Editor' },
-                    { mode: 'split', icon: Columns2, label: 'Split' },
-                    { mode: 'preview', icon: Eye, label: 'Preview' },
-                  ] as const).map(({ mode, icon: Icon, label }) => (
+                    { mode: 'editor', icon: Code },
+                    { mode: 'split', icon: Columns2 },
+                    { mode: 'preview', icon: Eye },
+                  ] as const).map(({ mode, icon: Icon }) => (
                     <button
                       key={mode}
                       onClick={() => setViewMode(mode)}
-                      title={label}
-                      aria-label={label}
+                      title={t(`views.${mode}`)}
+                      aria-label={t(`views.${mode}`)}
                       className={`flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
                         mode === 'split' ? 'hidden md:flex' : ''
                       } ${
@@ -1556,8 +1573,8 @@ export function Notes({ headerActions }: { headerActions?: React.ReactNode }) {
                   <button
                     onClick={() => setExportOpen(v => !v)}
                     className="flex h-10 w-10 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-canvas hover:text-ink"
-                    title="Export"
-                    aria-label="Export note"
+                    title={t('export')}
+                    aria-label={t('exportNote')}
                   >
                     <Download size={17} />
                   </button>
@@ -1569,7 +1586,7 @@ export function Notes({ headerActions }: { headerActions?: React.ReactNode }) {
                           { icon: FileText, label: 'Markdown (.md)', run: () => exportMarkdown(title, content) },
                           {
                             icon: FileDown,
-                            label: 'PDF (via print)',
+                            label: t('exportPdf'),
                             run: () => {
                               setPrinting(true);
                               setTimeout(() => window.print(), 50);
@@ -1597,21 +1614,21 @@ export function Notes({ headerActions }: { headerActions?: React.ReactNode }) {
                       onClick={() => { handleDeleteNote(selectedNote.id); setConfirmDelete(false); }}
                       className="rounded-lg bg-danger px-2.5 py-1.5 text-xs font-semibold text-accent-ink transition-colors hover:bg-danger"
                     >
-                      Delete
+                      {tCommon('delete')}
                     </button>
                     <button
                       onClick={() => setConfirmDelete(false)}
                       className="rounded-lg px-2 py-1.5 text-xs font-medium text-ink-muted transition-colors hover:text-ink"
                     >
-                      Cancel
+                      {tCommon('cancel')}
                     </button>
                   </div>
                 ) : (
                   <button
                     onClick={() => setConfirmDelete(true)}
                     className="flex h-10 w-10 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-danger-soft hover:text-danger"
-                    title="Delete note"
-                    aria-label="Delete note"
+                    title={t('deleteNote')}
+                    aria-label={t('deleteNote')}
                   >
                     <Trash2 size={17} />
                   </button>
@@ -1650,7 +1667,7 @@ export function Notes({ headerActions }: { headerActions?: React.ReactNode }) {
               const note = notes.find(n => n.id === id);
               if (!note) return null;
               const active = selectedNote?.id === id;
-              const label = (active ? title : note.title) || 'Untitled';
+              const label = (active ? title : note.title) || t('untitled');
               return (
                 <div
                   key={id}
@@ -1690,15 +1707,15 @@ export function Notes({ headerActions }: { headerActions?: React.ReactNode }) {
                     className={`min-w-0 flex-1 cursor-grab truncate py-1 text-left text-xs active:cursor-grabbing ${
                       active ? 'font-semibold' : 'font-medium'
                     }`}
-                    title={`${label} — drag to reorder, middle click to close`}
+                    title={t('tabHint', { title: label })}
                   >
                     {label}
                   </button>
                   <button
                     onClick={() => closeTab(id)}
                     className="flex h-5 w-5 shrink-0 items-center justify-center rounded-sm text-ink-faint transition-colors hover:bg-muted hover:text-ink"
-                    aria-label={`Close ${label}`}
-                    title="Close tab"
+                    aria-label={t('closeTabNamed', { title: label })}
+                    title={t('closeTab')}
                   >
                     <X size={12} />
                   </button>
@@ -1725,9 +1742,10 @@ export function Notes({ headerActions }: { headerActions?: React.ReactNode }) {
                     className="themed-scroll flex h-11 shrink-0 items-center gap-0.5 overflow-x-auto border-b border-line bg-surface pl-2 pr-2"
                     style={{ paddingLeft: `${Math.max(8, gutterWidth)}px` }}
                   >
-                    {TOOLBAR.map(({ icon: Icon, title: label, shortcut, wrap }, index) => {
+                    {TOOLBAR.map(({ icon: Icon, action, shortcut, wrap }, index) => {
+                      const label = t(`toolbar.${action}`);
                       return (
-                        <React.Fragment key={label}>
+                        <React.Fragment key={action}>
                           {index === 4 && <span className="mx-1.5 h-5 w-px shrink-0 bg-line" aria-hidden="true" />}
                           <button
                             type="button"
@@ -1748,8 +1766,8 @@ export function Notes({ headerActions }: { headerActions?: React.ReactNode }) {
                       type="button"
                       onMouseDown={e => e.preventDefault()}
                       onClick={() => fileInputRef.current?.click()}
-                      title="Insert image - or just paste or drop one"
-                      aria-label="Insert image"
+                      title={t('insertImageHint')}
+                      aria-label={t('insertImage')}
                       className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-muted hover:text-ink"
                     >
                       <ImagePlus size={15} />
@@ -1769,7 +1787,7 @@ export function Notes({ headerActions }: { headerActions?: React.ReactNode }) {
                     {uploading > 0 && (
                       <span className="ml-1 flex shrink-0 items-center gap-1.5 text-xs font-medium text-ink-muted">
                         <span className="h-3 w-3 animate-spin rounded-full border-2 border-line border-t-accent" />
-                        {uploading === 1 ? 'Uploading…' : `Uploading ${uploading}…`}
+                        {uploading === 1 ? t('uploading') : t('uploadingCount', { count: uploading })}
                       </span>
                     )}
                   </div>
@@ -1800,7 +1818,7 @@ export function Notes({ headerActions }: { headerActions?: React.ReactNode }) {
                       }}
                       onKeyDown={handleKeyDown}
                       onPaste={handlePaste}
-                      placeholder="Write in markdown…"
+                      placeholder={t('editorPlaceholder')}
                       spellCheck={false}
                       className="themed-scroll flex-1 resize-none border-none bg-raised font-mono text-ink outline-hidden placeholder:text-ink-faint"
                       style={{
@@ -1815,7 +1833,7 @@ export function Notes({ headerActions }: { headerActions?: React.ReactNode }) {
                     <div className="drop-target pointer-events-none absolute inset-0 z-20 flex items-center justify-center p-4">
                       <span className="flex items-center gap-2.5 rounded-xl border border-accent bg-surface px-4 py-3 text-[15px] font-semibold text-accent shadow-lg">
                         <ImagePlus size={18} />
-                        {dragCount > 1 ? `Drop ${dragCount} images here` : 'Drop image here'}
+                        {dragCount > 1 ? t('dropImages', { count: dragCount }) : t('dropImage')}
                       </span>
                     </div>
                   )}
@@ -1825,8 +1843,8 @@ export function Notes({ headerActions }: { headerActions?: React.ReactNode }) {
               {effectiveView !== 'editor' && (
                 <div className={`flex min-w-0 flex-col ${effectiveView === 'preview' ? 'flex-1' : 'w-1/2'}`}>
                   <div className="flex h-11 shrink-0 items-center justify-between border-b border-line bg-surface px-4">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-faint">Preview</span>
-                    <span className="text-[11px] tabular-nums text-ink-faint">{readingMinutes} min</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-faint">{t('preview')}</span>
+                    <span className="text-[11px] tabular-nums text-ink-faint">{t('readingTime', { minutes: readingMinutes })}</span>
                   </div>
                   <div className="themed-scroll flex-1 overflow-y-auto overscroll-contain bg-raised">
                     {content ? (
@@ -1839,7 +1857,7 @@ export function Notes({ headerActions }: { headerActions?: React.ReactNode }) {
                       </div>
                     ) : (
                       <p className={`text-sm italic text-ink-faint ${effectiveView === 'preview' ? 'mx-auto max-w-3xl px-5 py-6 sm:px-10 sm:py-8' : 'px-6 py-5'}`}>
-                        Preview will appear here…
+                        {t('previewPlaceholder')}
                       </p>
                     )}
                   </div>
@@ -1851,21 +1869,21 @@ export function Notes({ headerActions }: { headerActions?: React.ReactNode }) {
               {saveState === 'error' ? (
                 <span className="flex items-center gap-1.5 font-medium text-danger">
                   <AlertTriangle size={12} />
-                  Not saved - retrying
+                  {t('notSaved')}
                   <button
                     onClick={flushSave}
                     className="ml-1 rounded-sm px-1.5 py-0.5 text-[11px] font-semibold underline underline-offset-2 hover:bg-danger-soft"
                   >
-                    Retry now
+                    {t('retryNow')}
                   </button>
                 </span>
               ) : (
                 <span className="flex items-center gap-1.5">
-                  {saveState === 'saved' ? <><Check size={12} /> Saved</> : <>Saving…</>}
+                  {saveState === 'saved' ? <><Check size={12} /> {t('saved')}</> : <>{t('saving')}</>}
                 </span>
               )}
               <span className="tabular-nums">
-                {wordCount} {wordCount === 1 ? 'word' : 'words'} · {readingMinutes} min read
+                {t('stats', { words: wordCount, minutes: readingMinutes })}
               </span>
             </div>
 
@@ -1887,21 +1905,21 @@ export function Notes({ headerActions }: { headerActions?: React.ReactNode }) {
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-canvas">
                 <FileText size={28} className="text-ink-faint" />
               </div>
-              <h3 className="mb-1 text-lg font-semibold text-ink">No note selected</h3>
+              <h3 className="mb-1 text-lg font-semibold text-ink">{t('noneSelected')}</h3>
               <p className="mb-5 text-sm text-ink-muted">
-                Pick a note from the list, or start a new one
+                {t('noneSelectedHint')}
               </p>
               <div className="flex items-center justify-center gap-2">
                 <Button onClick={() => handleCreateNote()} className="h-11 text-base sm:h-10 sm:text-sm">
                   <Plus size={16} className="mr-2" />
-                  New note
+                  {t('newNote')}
                 </Button>
                 <Button
                   variant="outline"
                   onClick={() => setDrawerOpen(true)}
                   className="h-11 text-base sm:hidden"
                 >
-                  Browse
+                  {t('browse')}
                 </Button>
               </div>
             </div>

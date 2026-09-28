@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createHash } from 'crypto'
 import { writeFile } from 'fs/promises'
 import { getServerSession } from 'next-auth'
+import { apiError } from '@/lib/api-errors'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { ensureUploadsDir, pathFor } from '@/lib/uploads'
@@ -13,20 +14,20 @@ const MAX_BYTES = 8 * 1024 * 1024
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return apiError('unauthorized', 401)
   }
 
   try {
     const form = await request.formData()
     const file = form.get('file')
     if (!(file instanceof File)) {
-      return NextResponse.json({ error: 'No file' }, { status: 400 })
+      return apiError('noFile', 400)
     }
     if (!ALLOWED.has(file.type)) {
-      return NextResponse.json({ error: `Unsupported image type: ${file.type}` }, { status: 415 })
+      return apiError('unsupportedImage', 415)
     }
     if (file.size > MAX_BYTES) {
-      return NextResponse.json({ error: 'Image is too large' }, { status: 413 })
+      return apiError('imageTooLarge', 413)
     }
 
     const bytes = Buffer.from(await file.arrayBuffer())
@@ -47,6 +48,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ id, url: `/api/images/${id}`, width, height }, { status: 201 })
   } catch (error) {
     console.error('Failed to store image:', error)
-    return NextResponse.json({ error: 'Failed to store image' }, { status: 500 })
+    return apiError('imageUploadFailed', 500)
   }
 }

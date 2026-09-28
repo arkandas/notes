@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
+import { apiError } from '@/lib/api-errors'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { collectOrphans } from '@/lib/image-gc'
@@ -9,7 +10,7 @@ export async function GET() {
   try {
     const session = await getServerSession(authOptions)
     if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return apiError('unauthorized', 401)
     }
 
     const notes = await prisma.note.findMany({
@@ -19,7 +20,7 @@ export async function GET() {
     return NextResponse.json(notes)
   } catch (error) {
     console.error('Error fetching trash:', error)
-    return NextResponse.json({ error: 'Failed to fetch trash' }, { status: 500 })
+    return apiError('generic', 500)
   }
 }
 
@@ -27,7 +28,7 @@ export async function DELETE() {
   try {
     const session = await getServerSession(authOptions)
     if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return apiError('unauthorized', 401)
     }
 
     const userId = parseInt(session.user.id)
@@ -46,6 +47,6 @@ export async function DELETE() {
     return NextResponse.json({ deleted: result.count })
   } catch (error) {
     console.error('Error emptying trash:', error)
-    return NextResponse.json({ error: 'Failed to empty trash' }, { status: 500 })
+    return apiError('generic', 500)
   }
 }

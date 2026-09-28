@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
+import { apiError } from '@/lib/api-errors';
 import { authOptions } from '@/lib/auth';
 import { authConfig } from '@/lib/auth-config';
 import { prisma } from '@/lib/prisma';
@@ -10,10 +11,7 @@ export async function GET() {
     const session = await getServerSession(authOptions);
 
     if (!session || session.user.role !== 'ADMIN') {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return apiError('unauthorized', 401);
     }
 
     const users = await prisma.user.findMany({
@@ -31,19 +29,13 @@ export async function GET() {
     return NextResponse.json(users);
   } catch (error) {
     console.error('Error fetching users:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch users' },
-      { status: 500 }
-    );
+    return apiError('generic', 500);
   }
 }
 
 export async function POST(request: NextRequest) {
   if (authConfig.mode === 'oidc') {
-    return NextResponse.json(
-      { error: 'Users are managed by the identity provider' },
-      { status: 403 }
-    );
+    return apiError('usersManagedByProvider', 403);
   }
 
   try {
@@ -56,25 +48,16 @@ export async function POST(request: NextRequest) {
     if (!isFirstUser) {
       const session = await getServerSession(authOptions);
       if (!session || session.user.role !== 'ADMIN') {
-        return NextResponse.json(
-          { error: 'Unauthorized' },
-          { status: 401 }
-        );
+        return apiError('unauthorized', 401);
       }
     }
 
     if (!username || !email || !password) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
+      return apiError('missingFields', 400);
     }
 
     if (String(password).length < 6) {
-      return NextResponse.json(
-        { error: 'Password must be at least 6 characters' },
-        { status: 400 }
-      );
+      return apiError('passwordTooShort', 400);
     }
 
     const existingUser = await prisma.user.findFirst({
@@ -87,10 +70,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (existingUser) {
-      return NextResponse.json(
-        { error: 'Username or email already exists' },
-        { status: 400 }
-      );
+      return apiError('userExists', 400);
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -116,9 +96,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(user);
   } catch (error) {
     console.error('Error creating user:', error);
-    return NextResponse.json(
-      { error: 'Failed to create user' },
-      { status: 500 }
-    );
+    return apiError('userCreateFailed', 500);
   }
 }

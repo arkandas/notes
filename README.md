@@ -18,6 +18,7 @@ A distraction-free, self-hosted markdown editor.
 - Tabs, search, autosave and a trash for deleted notes
 - Export to Markdown, PDF and Word (.docx)
 - Multi-user support
+- English and Spanish
 
 ## Running it
 

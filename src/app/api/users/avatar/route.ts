@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
+import { apiError } from '@/lib/api-errors'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { collectOrphans } from '@/lib/image-gc'
@@ -7,7 +8,7 @@ import { collectOrphans } from '@/lib/image-gc'
 export async function PUT(request: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return apiError('unauthorized', 401)
   }
 
   try {
@@ -20,7 +21,7 @@ export async function PUT(request: NextRequest) {
         select: { id: true },
       })
       if (!image) {
-        return NextResponse.json({ error: 'Image not found' }, { status: 404 })
+        return apiError('imageNotFound', 404)
       }
     }
 
@@ -41,6 +42,6 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ avatarId: imageId ?? null })
   } catch (error) {
     console.error('Failed to set avatar:', error)
-    return NextResponse.json({ error: 'Failed to set avatar' }, { status: 500 })
+    return apiError('avatarFailed', 500)
   }
 }

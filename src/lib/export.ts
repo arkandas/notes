@@ -11,6 +11,8 @@ function downloadBlob(blob: Blob, filename: string) {
 
 export function slugify(title: string) {
   const slug = title
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');

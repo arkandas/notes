@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
+import { apiError } from '@/lib/api-errors'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
@@ -10,7 +11,7 @@ export async function POST(
   try {
     const session = await getServerSession(authOptions)
     if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return apiError('unauthorized', 401)
     }
 
     const { id: idParam } = await params
@@ -19,7 +20,7 @@ export async function POST(
 
     const existing = await prisma.note.findUnique({ where: { id } })
     if (!existing || existing.user_id !== userId) {
-      return NextResponse.json({ error: 'Note not found' }, { status: 404 })
+      return apiError('noteNotFound', 404)
     }
 
     const agg = await prisma.note.aggregate({
@@ -34,6 +35,6 @@ export async function POST(
     return NextResponse.json(note)
   } catch (error) {
     console.error('Error restoring note:', error)
-    return NextResponse.json({ error: 'Failed to restore note' }, { status: 500 })
+    return apiError('generic', 500)
   }
 }

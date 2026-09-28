@@ -3,10 +3,18 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getProviders } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
+import { LanguageToggle } from '@/components/LanguageToggle';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { readApiError } from '@/lib/error-codes';
+import { useApiError } from '@/lib/use-api-error';
 
 export default function SetupPage() {
+  const t = useTranslations('setup');
+  const tFields = useTranslations('fields');
+  const tErrors = useTranslations('errors');
+  const apiError = useApiError();
   const router = useRouter();
   const [formData, setFormData] = useState({
     username: '',
@@ -30,12 +38,12 @@ export default function SetupPage() {
     setError('');
 
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
+      setError(t('passwordMismatch'));
       return;
     }
 
     if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters');
+      setError(tErrors('passwordTooShort'));
       return;
     }
 
@@ -55,31 +63,32 @@ export default function SetupPage() {
         }),
       });
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to create user');
-      }
+      if (!response.ok) throw await readApiError(response, 'userCreateFailed');
 
       router.push('/login?setup=success');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setError(apiError(err, 'userCreateFailed'));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-canvas p-4">
+    <div className="relative flex min-h-screen items-center justify-center bg-canvas p-4">
+      <div className="absolute right-4 top-4">
+        <LanguageToggle />
+      </div>
+
       <div className="dialog-panel w-full max-w-md rounded-2xl bg-surface p-6 shadow-2xl sm:p-8">
         <div className="text-center mb-8">
-          <h1 className="mb-2 text-3xl font-bold text-ink">Welcome!</h1>
-          <p className="text-ink-muted">Create your administrator account</p>
+          <h1 className="mb-2 text-3xl font-bold text-ink">{t('title')}</h1>
+          <p className="text-ink-muted">{t('subtitle')}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="username" className="mb-1.5 block text-sm font-medium text-ink-muted">
-              Username
+              {tFields('username')}
             </label>
             <Input
               id="username"
@@ -88,13 +97,13 @@ export default function SetupPage() {
               onChange={(e) => setFormData({ ...formData, username: e.target.value })}
               required
               className="w-full"
-              placeholder="Enter username"
+              placeholder={tFields('usernamePlaceholder')}
             />
           </div>
 
           <div>
             <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-ink-muted">
-              Email
+              {tFields('email')}
             </label>
             <Input
               id="email"
@@ -103,13 +112,13 @@ export default function SetupPage() {
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               required
               className="w-full"
-              placeholder="Enter email"
+              placeholder={tFields('emailPlaceholder')}
             />
           </div>
 
           <div>
             <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-ink-muted">
-              Password
+              {tFields('password')}
             </label>
             <Input
               id="password"
@@ -118,13 +127,13 @@ export default function SetupPage() {
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               required
               className="w-full"
-              placeholder="Enter password (min. 6 characters)"
+              placeholder={tFields('passwordPlaceholder')}
             />
           </div>
 
           <div>
             <label htmlFor="confirmPassword" className="mb-1.5 block text-sm font-medium text-ink-muted">
-              Confirm Password
+              {t('confirmPassword')}
             </label>
             <Input
               id="confirmPassword"
@@ -133,7 +142,7 @@ export default function SetupPage() {
               onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
               required
               className="w-full"
-              placeholder="Confirm password"
+              placeholder={t('confirmPasswordPlaceholder')}
             />
           </div>
 
@@ -148,13 +157,13 @@ export default function SetupPage() {
             disabled={loading}
             className="h-11 w-full bg-accent text-base text-accent-ink hover:bg-accent-hover sm:h-10 sm:text-sm"
           >
-            {loading ? 'Creating Account...' : 'Create Admin Account'}
+            {loading ? t('submitting') : t('submit')}
           </Button>
         </form>
 
         <div className="mt-6 text-center text-sm text-ink-muted">
-          <p>This account will have administrator privileges.</p>
-          <p className="mt-1">You can create additional users later.</p>
+          <p>{t('adminNote')}</p>
+          <p className="mt-1">{t('moreUsersNote')}</p>
         </div>
       </div>
     </div>

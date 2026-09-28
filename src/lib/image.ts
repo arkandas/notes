@@ -1,3 +1,5 @@
+import { readApiError } from '@/lib/error-codes';
+
 const MAX_EDGE = 1600;
 
 const AVATAR_EDGE = 256;
@@ -56,10 +58,7 @@ async function send(file: File): Promise<UploadedImage> {
   }
 
   const response = await fetch('/api/images', { method: 'POST', body: form });
-  if (!response.ok) {
-    const body = await response.json().catch(() => null);
-    throw new Error(body?.error || 'Upload failed');
-  }
+  if (!response.ok) throw await readApiError(response, 'imageUploadFailed');
   return response.json();
 }
 

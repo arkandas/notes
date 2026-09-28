@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
+import { apiError } from '@/lib/api-errors'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { collectOrphans } from '@/lib/image-gc'
@@ -19,7 +20,7 @@ export async function PUT(
   try {
     const session = await getServerSession(authOptions)
     if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return apiError('unauthorized', 401)
     }
 
     const { id: idParam } = await params
@@ -28,7 +29,7 @@ export async function PUT(
 
     const existing = await getOwnedNote(id, userId)
     if (!existing) {
-      return NextResponse.json({ error: 'Note not found' }, { status: 404 })
+      return apiError('noteNotFound', 404)
     }
 
     const body = await request.json()
@@ -50,7 +51,7 @@ export async function PUT(
     return NextResponse.json(note)
   } catch (error) {
     console.error('Error updating note:', error)
-    return NextResponse.json({ error: 'Failed to update note' }, { status: 500 })
+    return apiError('generic', 500)
   }
 }
 
@@ -61,7 +62,7 @@ export async function DELETE(
   try {
     const session = await getServerSession(authOptions)
     if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return apiError('unauthorized', 401)
     }
 
     const { id: idParam } = await params
@@ -70,7 +71,7 @@ export async function DELETE(
 
     const existing = await getOwnedNote(id, userId)
     if (!existing) {
-      return NextResponse.json({ error: 'Note not found' }, { status: 404 })
+      return apiError('noteNotFound', 404)
     }
 
     const permanent = request.nextUrl.searchParams.get('permanent') === '1'
@@ -85,6 +86,6 @@ export async function DELETE(
     return NextResponse.json({ message: 'Note moved to trash' })
   } catch (error) {
     console.error('Error deleting note:', error)
-    return NextResponse.json({ error: 'Failed to delete note' }, { status: 500 })
+    return apiError('generic', 500)
   }
 }

@@ -15,7 +15,8 @@ describe('slugify', () => {
   });
 
   it('drops accents and symbols a filesystem would rather not see', () => {
-    expect(slugify('Résumé (2026) — final/draft')).toBe('r-sum-2026-final-draft');
+    expect(slugify('Résumé (2026) — final/draft')).toBe('resume-2026-final-draft');
+    expect(slugify('Sin título: año 2026, señales')).toBe('sin-titulo-ano-2026-senales');
   });
 
   it('falls back rather than returning an empty filename', () => {

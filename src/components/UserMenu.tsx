@@ -2,15 +2,26 @@
 
 import { useRef, useState } from 'react';
 import { useSession, signOut } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 import { Settings, LogOut, ChevronDown, Camera, Loader2 } from 'lucide-react';
+import { readApiError } from '@/lib/error-codes';
 import { uploadAvatar } from '@/lib/image';
+import { useApiError } from '@/lib/use-api-error';
+import { LanguagePicker } from '@/components/LanguageToggle';
 import { ThemePicker } from '@/components/ThemeToggle';
+
+const sectionLabel = 'mb-1.5 px-1 text-[11px] font-semibold uppercase tracking-wider text-ink-faint';
 
 interface UserMenuProps {
   onOpenSettings: () => void;
 }
 
 export function UserMenu({ onOpenSettings }: UserMenuProps) {
+  const t = useTranslations('userMenu');
+  const tTheme = useTranslations('theme');
+  const tLanguage = useTranslations('language');
+  const tRoles = useTranslations('roles');
+  const apiError = useApiError();
   const { data: session, update } = useSession();
   const [isOpen, setIsOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -29,12 +40,10 @@ export function UserMenu({ onOpenSettings }: UserMenuProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageId }),
       });
-      if (!response.ok) {
-        throw new Error((await response.json().catch(() => null))?.error || 'Could not save the picture');
-      }
+      if (!response.ok) throw await readApiError(response, 'avatarFailed');
       await update({ avatarId: imageId });
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not save the picture');
+      setError(apiError(e, 'avatarFailed'));
     } finally {
       setBusy(false);
     }
@@ -59,7 +68,7 @@ export function UserMenu({ onOpenSettings }: UserMenuProps) {
         </span>
         <div className="hidden md:block text-left">
           <div className="text-sm font-medium text-ink">{session.user.name}</div>
-          <div className="text-xs capitalize text-ink-muted">{session.user.role.toLowerCase()}</div>
+          <div className="text-xs text-ink-muted">{tRoles(session.user.role)}</div>
         </div>
         <ChevronDown size={16} className="text-ink-faint" />
       </button>
@@ -76,8 +85,8 @@ export function UserMenu({ onOpenSettings }: UserMenuProps) {
                 <button
                   onClick={() => fileRef.current?.click()}
                   disabled={busy}
-                  title="Change your picture"
-                  aria-label="Change your picture"
+                  title={t('changePicture')}
+                  aria-label={t('changePicture')}
                   className="group relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-accent text-base font-semibold text-accent-ink"
                 >
                   {avatarId ? (
@@ -115,9 +124,15 @@ export function UserMenu({ onOpenSettings }: UserMenuProps) {
               />
             </div>
 
-            <div className="border-b border-line px-3 pb-3 pt-2.5">
-              <div className="mb-1.5 px-1 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">Theme</div>
-              <ThemePicker />
+            <div className="space-y-2.5 border-b border-line px-3 pb-3 pt-2.5">
+              <div>
+                <div className={sectionLabel}>{tTheme('label')}</div>
+                <ThemePicker />
+              </div>
+              <div>
+                <div className={sectionLabel}>{tLanguage('label')}</div>
+                <LanguagePicker />
+              </div>
             </div>
 
             {session.user.role === 'ADMIN' && (
@@ -129,7 +144,7 @@ export function UserMenu({ onOpenSettings }: UserMenuProps) {
                 className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-ink-muted transition-colors hover:bg-canvas"
               >
                 <Settings size={16} />
-                Manage Users
+                {t('manageUsers')}
               </button>
             )}
 
@@ -138,7 +153,7 @@ export function UserMenu({ onOpenSettings }: UserMenuProps) {
               className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-danger transition-colors hover:bg-danger-soft"
             >
               <LogOut size={16} />
-              Sign Out
+              {t('signOut')}
             </button>
 
             <p className="mt-1 border-t border-line px-4 pb-1 pt-2 text-[11px] text-ink-faint">

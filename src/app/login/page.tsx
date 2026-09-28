@@ -3,8 +3,10 @@
 import { useState, useEffect, Suspense } from 'react';
 import { getProviders, signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { AlertTriangle, Check, Eye, EyeOff, Loader2, Lock, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { LanguageToggle } from '@/components/LanguageToggle';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { NotesMark } from '@/components/NotesMark';
 
@@ -23,9 +25,12 @@ function Spinner() {
 }
 
 function LoginCard({ children }: { children: React.ReactNode }) {
+  const t = useTranslations('app');
+
   return (
     <div className="login-page relative flex min-h-dvh items-center justify-center px-5">
-      <div className="absolute right-4 top-4">
+      <div className="absolute right-4 top-4 flex items-center gap-1">
+        <LanguageToggle />
         <ThemeToggle />
       </div>
 
@@ -34,7 +39,7 @@ function LoginCard({ children }: { children: React.ReactNode }) {
           <NotesMark size={52} />
           <span className="flex flex-col">
             <span className="text-[29px] font-semibold leading-none tracking-tight text-ink">Notes</span>
-            <span className="mt-2 text-[15px] text-ink-muted">Markdown workspace</span>
+            <span className="mt-2 text-[15px] text-ink-muted">{t('tagline')}</span>
           </span>
         </header>
 
@@ -66,6 +71,8 @@ function Notice({ children }: { children: React.ReactNode }) {
 }
 
 function PasswordSignIn() {
+  const t = useTranslations('login');
+  const tFields = useTranslations('fields');
   const router = useRouter();
   const searchParams = useSearchParams();
   const [formData, setFormData] = useState({
@@ -75,7 +82,7 @@ function PasswordSignIn() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
+  const accountCreated = searchParams.get('setup') === 'success';
 
   useEffect(() => {
     const checkSetup = async () => {
@@ -90,11 +97,7 @@ function PasswordSignIn() {
       }
     };
     checkSetup();
-
-    if (searchParams.get('setup') === 'success') {
-      setSuccessMessage('Account created. Sign in to continue.');
-    }
-  }, [searchParams, router]);
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,13 +112,13 @@ function PasswordSignIn() {
       });
 
       if (result?.error) {
-        setError('Invalid username or password');
+        setError(t('invalid'));
       } else {
         router.push('/');
         router.refresh();
       }
     } catch {
-      setError('An error occurred during login');
+      setError(t('failed'));
     } finally {
       setLoading(false);
     }
@@ -133,12 +136,12 @@ function PasswordSignIn() {
 
   return (
     <>
-      {successMessage && <Notice>{successMessage}</Notice>}
+      {accountCreated && <Notice>{t('accountCreated')}</Notice>}
 
       <form onSubmit={handleSubmit}>
         <div className="mb-4">
           <label htmlFor="username" className="mb-2 block text-[15px] font-semibold text-ink">
-            Username
+            {tFields('username')}
           </label>
           <div className="relative">
             <input
@@ -158,7 +161,7 @@ function PasswordSignIn() {
 
         <div className="mb-4">
           <label htmlFor="password" className="mb-2 block text-[15px] font-semibold text-ink">
-            Password
+            {tFields('password')}
           </label>
           <div className="relative">
             <input
@@ -176,8 +179,8 @@ function PasswordSignIn() {
               type="button"
               onClick={() => setShowPassword(v => !v)}
               tabIndex={-1}
-              title={showPassword ? 'Hide password' : 'Show password'}
-              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              title={showPassword ? t('hidePassword') : t('showPassword')}
+              aria-label={showPassword ? t('hidePassword') : t('showPassword')}
               className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-ink-faint transition-colors hover:bg-muted hover:text-ink-muted"
             >
               {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -191,10 +194,10 @@ function PasswordSignIn() {
           {loading ? (
             <>
               <Loader2 size={16} className="mr-2 animate-spin" />
-              Signing in…
+              {t('submitting')}
             </>
           ) : (
-            'Sign in'
+            t('submit')
           )}
         </Button>
       </form>
@@ -203,6 +206,7 @@ function PasswordSignIn() {
 }
 
 function OidcSignIn({ name }: { name: string }) {
+  const t = useTranslations('login');
   const searchParams = useSearchParams();
   const error = searchParams.get('error');
   const signedOut = searchParams.has('signedOut');
@@ -222,11 +226,11 @@ function OidcSignIn({ name }: { name: string }) {
       {error && (
         <ErrorMessage>
           {error === 'AccessDenied'
-            ? `That ${name} account can't sign in to Notes: it has no email, or another ${name} account already uses its email here. To use a different account, sign out of ${name} first.`
-            : `Sign-in with ${name} failed. Try again.`}
+            ? t('providerDenied', { provider: name })
+            : t('providerFailed', { provider: name })}
         </ErrorMessage>
       )}
-      {signedOut && !error && <Notice>You signed out of Notes.</Notice>}
+      {signedOut && !error && <Notice>{t('signedOut')}</Notice>}
 
       <Button
         type="button"
@@ -240,10 +244,10 @@ function OidcSignIn({ name }: { name: string }) {
         {redirecting ? (
           <>
             <Loader2 size={16} className="mr-2 animate-spin" />
-            Redirecting to {name}…
+            {t('providerRedirecting', { provider: name })}
           </>
         ) : (
-          `Sign in with ${name}`
+          t('providerSubmit', { provider: name })
         )}
       </Button>
     </>

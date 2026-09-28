@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
+import { apiError } from '@/lib/api-errors'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
@@ -7,7 +8,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return apiError('unauthorized', 401)
     }
 
     const userId = parseInt(session.user.id)
@@ -25,6 +26,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true })
   } catch (error) {
     console.error('Error reordering notes:', error)
-    return NextResponse.json({ error: 'Failed to reorder notes' }, { status: 500 })
+    return apiError('generic', 500)
   }
 }

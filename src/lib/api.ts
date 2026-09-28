@@ -4,6 +4,7 @@ import {
   CreateNote,
   UpdateNote,
 } from '@/types';
+import { readApiError } from '@/lib/error-codes';
 
 export const noteApi = {
   getAll: async (): Promise<Note[]> => {
@@ -90,10 +91,7 @@ export const noteFolderApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(changes),
     });
-    if (!response.ok) {
-      const body = await response.json().catch(() => null);
-      throw new Error(body?.error || 'Failed to update folder');
-    }
+    if (!response.ok) throw await readApiError(response, 'folderUpdateFailed');
     return response.json();
   },
 
